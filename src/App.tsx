@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Chessboard from './Chessboard'
 import PromotionDropDown from './PromotionDropDown';
 import { Chess } from 'chess.js'
+import ComputerMoveButtons from './computerMove';
 
 const App: React.FC = () => {
   const [isWhite, setIsWhite] = useState<boolean>(Math.random() > 0.5);
@@ -23,6 +24,7 @@ const App: React.FC = () => {
       <div className="ml-4 text-xl">
         <p>{isWhite ? 'You are playing as White' : 'You are playing as Black'}</p>
         <PromotionDropDown isWhite={isWhite} setPromotionPiece={setPromotionPiece}/>
+        <ComputerMoveButtons chessGame={game} makeMove={makeMove} />
       </div>
     </div>
   );

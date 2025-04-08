@@ -80,7 +80,6 @@ const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeMove,prom
     );
   };
 
-  
 
   return <div>{renderBoard()}</div>;
 };
