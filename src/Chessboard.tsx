@@ -1,17 +1,17 @@
 import React from 'react';
 import { useState } from 'react';
-import { Chess, Square } from 'chess.js';
+import { Chess, Piece, Square } from 'chess.js';
 import {pieceImages} from './pieceImages'
 
 interface ChessboardProps {
   isWhite: boolean;
   chessGame: Chess;
-  makeMove: (fromSquare: string, toSquare: string, promotion?: string) => void;
+  makeExplicitMove: (fromSquare: string, toSquare: string, promotion?: string) => void;
   promotePiece: string;
 }
 
 
-const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeMove,promotePiece }) => {
+const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeExplicitMove,promotePiece }) => {
 
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   //List of possible moves depending on the selected square
@@ -19,6 +19,8 @@ const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeMove,prom
   // Define the file (a-h) and rank (1-8) values
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
+  const turn = chessGame.turn() === 'w' ? 'WHITE' : 'BLACK';
 
   // Reverse the rows if playing as black
   const adjustedRanks = !isWhite ? ranks : ranks.slice().reverse();
@@ -28,13 +30,13 @@ const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeMove,prom
 
     const key = `${piece.color}${piece.type}`; // e.g., "wp"
     return <img src={pieceImages[key]} alt={key} className="w-24 h-24" />;
-};
+  };
 
   const handleSquareClick = (squareClicked: string) => {
     const alreadySelected = selectedSquare === squareClicked
     if (selectedSquare !== null && !alreadySelected) {
 
-      makeMove(selectedSquare,squareClicked,promotePiece);  // Execute move
+      makeExplicitMove(selectedSquare,squareClicked,promotePiece);  // Execute move
       setSelectedSquare(null); // Deselect after move
       return; // Stop further execution
     }
@@ -43,7 +45,7 @@ const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeMove,prom
     setSelectedSquare(alreadySelected ? null : squareClicked);
     console.log(chessGame.get(squareClicked as Square))
     console.log(possibleMoves)
-};
+  };
 
   // Render each square with alphanumeric notation
   //if you add the row index and column index (assuming both start from 1, like in algebraic notation), the sum determines the color:
@@ -58,13 +60,16 @@ const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeMove,prom
 
     const piece = chessGame.get(square as Square) || null
 
-    const isPossibleMove = possibleMoves.includes(square as Square)
+    const isPossibleMove = possibleMoves.includes(square as Square);
+  
+    const isCheckedKing = piece?.type == 'k' && chessGame.isCheck() && piece?.color == chessGame.turn();
+
 
     return (
       <div
         key={square}
         onClick={() => handleSquareClick(square)}
-        className={`flex items-center justify-center w-24 h-24 ${isDarkSquare ? 'bg-gray-700' : 'bg-gray-300'} ${isSelected ? 'border-4 border-yellow-500' : ''} ${isPossibleMove ? 'border-4 border-orange-500': ''}`}
+        className={`flex items-center justify-center w-24 h-24 ${isDarkSquare ? 'bg-gray-700' : 'bg-gray-300'} ${isSelected ? 'border-2 border-orange-500' : ''} ${isPossibleMove ? 'border-2 border-orange-500': ''} ${isCheckedKing ? 'border-2 border-red-500' : ''}`}
       >
         <ChessPiece piece={piece}/>
       </div>
