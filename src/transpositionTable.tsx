@@ -1,7 +1,15 @@
+
+type SimpleMove = {
+  from: string;
+  to: string;
+  promotion?: string;
+};
+
 export type TranspositionEntry = {
   score: number;
   depth: number;
-  flag: 'FULL' | 'ALPHA' | 'BETA'
+  flag: 'FULL' | 'ALPHA' | 'BETA';
+  bestMove?: SimpleMove
 };
 
 export class TranspositionTable {

@@ -14,28 +14,35 @@ function randomMove(chessGame: Chess): Move | null{
 
 let nodesVisited = 0;
 
+const pieceValues: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+
+const centerSquares = new Set(['d4', 'd5', 'e4',"e5"]);
+
+const outerCenterSquares = new Set(['c3','c4','c5','c6','d3','d6','e3','e6','f3','f4','f5','f6'])
+
 function getPieceValue(piece: string): number {
-  const pieceValues: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
   return pieceValues[piece] || 0;
 }
 
 function evaluateBoard(chessGame: Chess, startingColor: string) {
-  const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+  
   const board = chessGame.board();
+  const turn = chessGame.turn();
+
   let score = 0;
 
   if(chessGame.isCheckmate()){
-    score += (chessGame.turn() !== startingColor) ? 100 : -100
+    score += (turn !== startingColor) ? 100 : -100
   }
 
   if(chessGame.isCheck()){
-    score += (chessGame.turn() !== startingColor) ? 2 : -2
+    score += (turn !== startingColor) ? 1 : -1
   }
 
   for (let row of board) {
     for (let piece of row) {
       if (piece) {
-        const value = pieceValues[piece.type];
+        const value = getPieceValue(piece.type)
         score += (piece.color === startingColor) ? value : -value;
       }
     }
@@ -68,12 +75,13 @@ function minimaxAB(chessGame: Chess, depth: number, alpha: number, beta: number,
 
   const legalMoves = chessGame.moves({verbose: true})
 
-  legalMoves.sort((a, b) => evaluateMovePriority(chessGame,b) - evaluateMovePriority(chessGame,a));
+  legalMoves.sort((a, b) => evaluateMovePriority(chessGame,b,transpositionTable) - evaluateMovePriority(chessGame,a,transpositionTable));
 
   let originalAlpha = alpha;
   let originalBeta = beta;
 
   let bestEval = isMaximizing ? -Infinity : Infinity;
+  let bestMove = null;
 
   if (isMaximizing) {
     
@@ -81,6 +89,10 @@ function minimaxAB(chessGame: Chess, depth: number, alpha: number, beta: number,
       chessGame.move(move);
       const boardEval = minimaxAB(chessGame, depth - 1, alpha, beta, false, startingColor, transpositionTable);
       chessGame.undo();
+
+      if(boardEval > bestEval){
+        bestMove = move
+      }
 
       bestEval = Math.max(bestEval, boardEval);
       alpha = Math.max(alpha, boardEval);
@@ -94,6 +106,10 @@ function minimaxAB(chessGame: Chess, depth: number, alpha: number, beta: number,
       chessGame.move(move);
       const boardEval = minimaxAB(chessGame, depth - 1, alpha, beta, true, startingColor, transpositionTable);
       chessGame.undo();
+
+      if(boardEval < bestEval){
+        bestMove = move
+      }
 
       bestEval = Math.min(bestEval, boardEval);
       beta = Math.min(beta, boardEval);
@@ -116,7 +132,8 @@ function minimaxAB(chessGame: Chess, depth: number, alpha: number, beta: number,
   transpositionTable.set(hashedPosition, {
     score: bestEval,
     depth: depth,
-    flag: flag
+    flag: flag,
+    bestMove: (flag === 'FULL' && bestMove) ? { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion } : undefined
   });
 
   return bestEval
@@ -128,11 +145,11 @@ function searchBestMoveMinimax(chessGame: Chess, depth: number, startingColor: s
   let bestMove = null;
   let bestEval = -Infinity;
 
-  const transpositionTable = new TranspositionTable(200000);
+  const transpositionTable = new TranspositionTable(500000);
 
   const legalMoves = chessGame.moves({verbose: true})
 
-  legalMoves.sort((a, b) => evaluateMovePriority(chessGame,b) - evaluateMovePriority(chessGame,a));
+  legalMoves.sort((a, b) => evaluateMovePriority(chessGame,b,transpositionTable) - evaluateMovePriority(chessGame,a,transpositionTable));
 
   const start = performance.now();
 
@@ -154,25 +171,37 @@ function searchBestMoveMinimax(chessGame: Chess, depth: number, startingColor: s
   return bestMove;
 }
 
-function evaluateMovePriority(chessGame: Chess, move: Move){
+function evaluateMovePriority(chessGame: Chess, move: Move, transpositionTable: TranspositionTable){
 
   const turnNumber = chessGame.history().length;
-
-  const isEarlyGame = turnNumber <= 15;
-
-  const centerSquares = new Set(['d4', 'd5', 'e4',"e5"]);
-
-  const outerCenterSquares = new Set(['c3','c4','c5','c6','d3','d6','e3','e6','f3','f4','f5','f6'])
+  const pieceMoved = move.piece;
+  const movedTo = move.to;
   
+  const ttEntry = transpositionTable.get(chessGame.hash()); // transposition table entry
+
+  const ttBestMove = ttEntry?.bestMove;
+
+  const earlyGame = turnNumber <= 15;
+
   let score = 0;
 
-  if(move.san.includes('#')){
-    return 10000;
+  if (ttBestMove && move.from === ttBestMove.from && movedTo === ttBestMove.to && move.promotion === ttBestMove.promotion) {
+    score += 200; // best move from transposition table (if available) gets priority
+    
+    console.log("tt move found")
+
   }
 
-  if(move.san.includes('+')){
-    score+= 30;
+  chessGame.move(move);
+
+  if (chessGame.isCheckmate()) {
+    chessGame.undo()
+    return 10000;
+  } else if (chessGame.isCheck()) {
+    score += 15
   }
+
+  chessGame.undo()
 
   if(move.isBigPawn()){
     score += 10
@@ -183,7 +212,9 @@ function evaluateMovePriority(chessGame: Chess, move: Move){
   }
 
   if(move.isPromotion()){
-    score += 150
+    score += 100
+    score += getPieceValue(move.promotion as string) 
+
   }
 
   if(move.isKingsideCastle() || move.isQueensideCastle()){
@@ -192,18 +223,31 @@ function evaluateMovePriority(chessGame: Chess, move: Move){
 
   if(move.isCapture()){
     const captured = move.captured as string
-    score += ( getPieceValue(captured) * 10 - getPieceValue(move.piece) ) 
+    score += ( getPieceValue(captured) * 10 - getPieceValue(pieceMoved) ) 
   }
 
-  if(centerSquares.has(move.to)){
+  if(earlyGame){
+
+    if(centerSquares.has(movedTo)){
     score += 10
-  }
-  else if(outerCenterSquares.has(move.to)){
+    }
+    else if(outerCenterSquares.has(movedTo)){
     score += 5
+    }
+
+    if(pieceMoved === 'n' || pieceMoved === 'b'){
+      score += 10
+    }
+    if(pieceMoved === 'q'){
+      score += 5
+    }
+
   }
+
 
   return score;
 }
+
 
 
 
