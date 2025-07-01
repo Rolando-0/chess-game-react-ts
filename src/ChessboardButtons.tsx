@@ -25,7 +25,7 @@ const ComputerMoveButtons: React.FC<ComputerMoveProps> = ({chessGame,makeExplici
 
     const turn = chessGame.turn()
 
-    const move = searchBestMoveMinimax(tempChessGame,4,turn);
+    const move = searchBestMoveMinimax(tempChessGame,6,turn);
 
     if(move){
       makeExplicitMove(move.from,move.to,move.promotion)

@@ -1,5 +1,5 @@
 
-type SimpleMove = {
+export type SimpleMove = {
   from: string;
   to: string;
   promotion?: string;
@@ -25,12 +25,15 @@ export class TranspositionTable {
   }
 
   set(hash: string, entry: TranspositionEntry) {
-    if (this.table.size >= this.maxSize) {
-      // Remove oldest inserted entry
-      const firstKey = this.table.keys().next().value || '';
-      this.table.delete(firstKey);
+    const existing = this.table.get(hash);
+
+    if (!existing || entry.depth >= existing.depth) {
+      this.table.set(hash, entry);
     }
-    this.table.set(hash, entry);
+  }
+
+  size(): number{
+    return this.table.size
   }
 }
 
