@@ -14,7 +14,7 @@ function randomMove(chessGame: Chess): Move | null{
 
 let nodesVisited = 0;
 
-const pieceValues: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+const pieceValues: Record<string, number> = { p: 100, n: 300, b: 300, r: 500, q: 900, k: 0 };
 
 const centerSquares = new Set(['d4', 'd5', 'e4',"e5"]);
 
@@ -26,23 +26,19 @@ function getPieceValue(piece: string): number {
 
 function evaluateBoard(chessGame: Chess, startingColor: string) {
   
-  const board = chessGame.board();
-  const turn = chessGame.turn();
+  if(chessGame.isCheckmate()){
+    return (chessGame.turn() === startingColor) ? -10000 : 10000
+  }
 
+  const board = chessGame.board();
   let score = 0;
 
-  if(chessGame.isCheckmate()){
-    return (turn === startingColor) ? -200 : 200
-  }
 
-  if(chessGame.isCheck()){
-    score += (turn === startingColor) ? -1 : 1
-  }
 
   for (let row of board) {
     for (let piece of row) {
       if (piece) {
-        const value = getPieceValue(piece.type)
+        const value =  pieceValues[piece.type];
         score += (piece.color === startingColor) ? value : -value;
       }
     }
@@ -50,6 +46,7 @@ function evaluateBoard(chessGame: Chess, startingColor: string) {
 
   return score;
 }
+
 
 function minimaxAB(
   chessGame: Chess, 
@@ -87,7 +84,7 @@ function minimaxAB(
   // Move ordering
   const scoredMoves = legalMoves.map(move => ({
     move,
-    score: evaluateMovePriority(chessGame, move,hash, transpositionTable, killerMoves, depth)
+    score: evaluateMovePriority(chessGame, move, hash, entry, killerMoves, depth)
   }));
   scoredMoves.sort((a, b) => b.score - a.score);
 
@@ -178,7 +175,7 @@ function serializeMove(move: Move): string {
 function searchBestMoveMinimax(chessGame: Chess, depth: number, startingColor: string) {
   let result = null;
 
-  const transpositionTable = new TranspositionTable(500000);
+  const transpositionTable = new TranspositionTable(250000);
 
   const killerMoves: Record<number, Set<string>> = {};
 
@@ -187,6 +184,8 @@ function searchBestMoveMinimax(chessGame: Chess, depth: number, startingColor: s
   for (let currentDepth = 1; currentDepth <= depth; currentDepth++) {
     result = minimaxAB(chessGame, currentDepth, -Infinity, Infinity, true,startingColor, transpositionTable,killerMoves);
   }
+
+  
   const end = performance.now();
 
   console.log(`time taken by minimax: ${ end - start } ` )
@@ -194,75 +193,55 @@ function searchBestMoveMinimax(chessGame: Chess, depth: number, startingColor: s
   return result?.move;
 }
 
-function evaluateMovePriority(chessGame: Chess, move: Move,hash: string, transpositionTable: TranspositionTable,killerMoves: Record<number,Set<string>>,depth: number){
+function evaluateMovePriority(chessGame: Chess, move: Move,hash: string, ttEntry: TranspositionEntry | undefined,killerMoves: Record<number,Set<string>>,depth: number){
+
+  if (move.san.includes('#')) {
+    return 100000 - depth;
+  }
 
   const pieceMoved = move.piece;
   const movedTo = move.to;
   const movedFrom = move.from
-  
-  
 
-  const ttEntry = transpositionTable.get(hash)
+  
+  let score = 0;
+
   
   const bestMove = ttEntry?.bestMove
 
-  let score = 0;
-
   //transposition table move available
   if (bestMove && movedFrom === bestMove.from && movedTo === bestMove.to && move.promotion === bestMove.promotion) {
-    score += 100;
+    score += 10000;
   }
 
   if (killerMoves[depth]?.has(serializeMove(move))) {
-    score += 30;
+    score += 2000;
   } 
 
-  if (move.san.includes('#')) {
-    return 10000 - depth;
-  } else if (move.san.includes('+')) {
-    score += 10
+  if (move.san.includes('+')) {
+    score += 500
   }
 
   if(move.isEnPassant()){
-    score += 10
+    score += 1000
   }
 
   if(move.isPromotion()){
-    score += 50
+    score += 5000
     score += getPieceValue(move.promotion as string) 
 
   }
 
   if(move.isKingsideCastle() || move.isQueensideCastle()){
-    score += 10
+    score += 1000
   }
 
   if(move.isCapture()){
     const captured = move.captured as string
-    score += ( getPieceValue(captured) * 10 - getPieceValue(pieceMoved) ) 
+    score += 2000 + ( pieceValues[captured] * 10 - pieceValues[pieceMoved] ) 
   }
 
-  if(true){
-
-    if(move.isBigPawn()){
-      score += 2
-    }
-
-    if(centerSquares.has(movedTo)){
-      score += 2
-    }
-    else if(outerCenterSquares.has(movedTo)){
-      score += 1
-    }
-
-    if(pieceMoved === 'n' || pieceMoved === 'b'){
-      score += 2
-    }
-    if(pieceMoved === 'q'){
-      score += 2
-    }
-
-  }
+  
   return score;
 }
 

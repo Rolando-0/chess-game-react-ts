@@ -29,6 +29,7 @@ const ComputerMoveButtons: React.FC<ComputerMoveProps> = ({chessGame,makeExplici
 
     if(move){
       makeExplicitMove(move.from,move.to,move.promotion)
+      console.log(move)
     }
   }
 
