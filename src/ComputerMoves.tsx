@@ -146,7 +146,7 @@ function minimaxAB(
     return 0;
   });
 
-  if(depth === searchDepth || depth === searchDepth - 1){
+  if(depth === searchDepth){
     console.log(scoredMoves)
   }
 
