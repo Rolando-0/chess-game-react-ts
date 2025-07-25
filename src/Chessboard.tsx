@@ -47,12 +47,16 @@ const Chessboard: React.FC<ChessboardProps> = ({ isWhite,chessGame,makeExplicitM
     console.log(possibleMoves)
   };
 
-  // Render each square with alphanumeric notation
-  //if you add the row index and column index (assuming both start from 1, like in algebraic notation), the sum determines the color:
-  //ASSUMING INDICES START AT 0
-  //Even sum → White square
-  //Odd sum → Black square
+  /*
 
+  Render each square with alphanumeric notation
+  if you add the row index and column index (assuming both start from 1, like in algebraic notation), the sum determines the color:
+  Assuming indices start at 0
+  Even sum -> White square
+  Odd sum -> Black square 
+  
+  */
+ 
   const renderSquare = (file: string, rank: string) => {
     const square = `${file}${rank}`;
     const isDarkSquare = (files.indexOf(file) + ranks.indexOf(rank)) % 2 === 1;

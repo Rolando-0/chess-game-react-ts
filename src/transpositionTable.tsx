@@ -36,4 +36,3 @@ export class TranspositionTable {
     return this.table.size
   }
 }
-

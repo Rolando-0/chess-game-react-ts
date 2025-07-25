@@ -12,9 +12,12 @@ const App: React.FC = () => {
   const makeExplicitMove = (fromSquare: string, toSquare: string, promotion?: string) => {
     const newGame = new Chess();
     newGame.loadPgn(game.pgn()); 
+
+    const validMove = newGame.move({from: fromSquare, to: toSquare, promotion: promotion})
   
-    if (newGame.move({from: fromSquare, to: toSquare, promotion: promotion})) {
-      setGame(newGame); 
+    if (validMove) {
+      setGame(newGame);
+      console.log(validMove)
     }
   }
 
